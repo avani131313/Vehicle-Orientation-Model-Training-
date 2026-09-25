@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vehicle Orientation Classification &amp; Dataset Engineering for an ANPR Pipeline</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff; --surface:#f8fafc; --surface-2:#f1f5f9;
+  --text:#0f172a; --text-2:#475569; --text-3:#94a3b8;
+  --border:#e2e8f0;
+  --accent:#4f46e5; --accent-soft:#eef2ff; --accent-2:#0ea5e9;
+  --ok:#059669; --ok-soft:#ecfdf5;
+  --warn:#d97706; --warn-soft:#fffbeb;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  --maxw:920px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:16px; line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{display:flex; max-width:1400px; margin:0 auto;}
+nav.toc{
+  width:270px; flex:0 0 270px; position:sticky; top:0; height:100vh;
+  overflow-y:auto; padding:32px 20px; border-right:1px solid var(--border);
+  background:var(--surface); font-size:13.5px;
+}
+nav.toc .toc-title{
+  font-size:11px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--text-3); font-weight:700; margin-bottom:14px;
+}
+nav.toc a{
+  display:block; padding:6px 10px; color:var(--text-2); text-decoration:none;
+  border-radius:6px; line-height:1.4;
+}
+nav.toc a:hover{background:var(--accent-soft); color:var(--accent);}
+nav.toc a.sub{padding-left:22px; font-size:12.5px; color:var(--text-3);}
+main{flex:1; min-width:0; padding:0 56px 120px; max-width:var(--maxw); margin:0 auto;}
+
+.cover{padding:80px 0 56px; border-bottom:1px solid var(--border); margin-bottom:56px;}
+.eyebrow{
+  display:inline-block; font-size:11px; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--accent); background:var(--accent-soft);
+  padding:6px 12px; border-radius:99px; margin-bottom:22px;
+}
+.cover h1{font-size:41px; line-height:1.18; font-weight:800; letter-spacing:-.022em; margin:0 0 18px;}
+.cover .sub{font-size:18px; color:var(--text-2); margin-bottom:36px; max-width:640px;}
+.meta{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:1px; background:var(--border); border:1px solid var(--border);
+  border-radius:10px; overflow:hidden;
+}
+.meta div{background:var(--bg); padding:14px 16px;}
+.meta dt{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--text-3); font-weight:700; margin-bottom:5px;
+}
+.meta dd{margin:0; font-size:14px; font-weight:600;}
+
+h2{
+  font-size:27px; font-weight:750; letter-spacing:-.018em; margin:64px 0 18px;
+  padding-bottom:11px; border-bottom:2px solid var(--border); scroll-margin-top:24px;
+}
+h3{font-size:20px; font-weight:700; letter-spacing:-.01em; margin:40px 0 14px; scroll-margin-top:24px;}
+h4{font-size:16px; font-weight:700; margin:28px 0 10px; color:var(--text-2);}
+p{margin:0 0 16px;}
+ul,ol{margin:0 0 16px; padding-left:22px;}
+li{margin-bottom:7px;}
+a{color:var(--accent);}
+strong{font-weight:650;}
+code{
+  font-family:var(--mono); font-size:.86em; background:var(--surface-2);
+  padding:2px 6px; border-radius:4px; color:#be123c;
+}
+pre{
+  background:#0f172a; color:#e2e8f0; padding:18px 20px; border-radius:10px;
+  overflow-x:auto; font-family:var(--mono); font-size:13px; line-height:1.65; margin:0 0 20px;
+}
+pre code{background:none; color:inherit; padding:0; font-size:inherit;}
+
+.metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:26px 0 30px;}
+.metric{background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:18px 16px; text-align:center;}
+.metric .val{font-size:29px; font-weight:800; letter-spacing:-.026em; color:var(--accent); line-height:1.1;}
+.metric .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); font-weight:700; margin-top:7px;}
+
+.callout{border-radius:10px; padding:17px 20px; margin:24px 0; border:1px solid var(--border); border-left-width:4px; background:var(--surface);}
+.callout .ct{font-size:11px; font-weight:750; text-transform:uppercase; letter-spacing:.08em; margin-bottom:9px;}
+.callout p:last-child{margin-bottom:0;}
+.c-note{border-left-color:var(--accent); background:var(--accent-soft);}
+.c-note .ct{color:var(--accent);}
+.c-decision{border-left-color:var(--ok); background:var(--ok-soft);}
+.c-decision .ct{color:var(--ok);}
+.c-challenge{border-left-color:var(--warn); background:var(--warn-soft);}
+.c-challenge .ct{color:var(--warn);}
+.c-lesson{border-left-color:var(--accent-2); background:#f0f9ff;}
+.c-lesson .ct{color:#0284c7;}
+
+.tw{overflow-x:auto; margin:0 0 24px;}
+table{width:100%; border-collapse:collapse; font-size:14px; border:1px solid var(--border); border-radius:9px; overflow:hidden;}
+thead th{
+  background:var(--surface-2); text-align:left; padding:11px 14px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+  font-weight:750; color:var(--text-2); border-bottom:1px solid var(--border);
+}
+td{padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface);}
+td strong{color:var(--accent);}
+
+.tl{position:relative; margin:32px 0 40px; padding-left:34px;}
+.tl::before{content:''; position:absolute; left:9px; top:6px; bottom:6px; width:2px; background:linear-gradient(180deg,var(--accent),var(--accent-2));}
+.tl-item{position:relative; margin-bottom:28px;}
+.tl-item::before{content:''; position:absolute; left:-30px; top:5px; width:12px; height:12px; border-radius:50%; background:var(--bg); border:3px solid var(--accent);}
+.tl-item.ongoing::before{border-color:var(--warn);}
+.tl-wk{font-size:10.5px; font-weight:750; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin-bottom:3px;}
+.tl-item.ongoing .tl-wk{color:var(--warn);}
+.tl-h{font-size:16.5px; font-weight:700; margin-bottom:5px;}
+.tl-d{font-size:14px; color:var(--text-2);}
+
+.mermaid{background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:24px; margin:24px 0; text-align:center; overflow-x:auto;}
+.pill{display:inline-block; font-size:11.5px; font-weight:650; padding:4px 11px; border-radius:99px; background:var(--surface-2); color:var(--text-2); margin:0 5px 6px 0; border:1px solid var(--border);}
+.checklist{list-style:none; padding-left:0;}
+.checklist li{padding-left:26px; position:relative;}
+.checklist li::before{content:'\2610'; position:absolute; left:2px; color:var(--text-3); font-size:15px;}
+.footer{margin-top:72px; padding-top:22px; border-top:1px solid var(--border); font-size:13px; color:var(--text-3); font-style:italic;}
+
+@media (max-width:1040px){
+  nav.toc{display:none;}
+  main{padding:0 24px 80px;}
+  .cover h1{font-size:31px;}
+  .cover{padding:48px 0 36px;}
+}
+@media print{
+  nav.toc{display:none;}
+  main{max-width:100%; padding:0;}
+  h2{page-break-after:avoid;} table,.callout,.mermaid{page-break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <div class="toc-title">Contents</div>
+  <a href="#summary">Executive Summary</a>
+  <a href="#company">1 · Company Background</a>
+  <a href="#problem">2 · Problem Statement</a>
+  <a href="#objectives">3 · Objectives</a>
+  <a href="#timeline">4 · Timeline Overview</a>
+  <a href="#phase1">5 · Phase I — Weekly Progress</a>
+  <a href="#w1" class="sub">Week 1 · Understanding</a>
+  <a href="#w2" class="sub">Week 2 · Data &amp; Labelling</a>
+  <a href="#w3" class="sub">Week 3 · Quality</a>
+  <a href="#w4" class="sub">Week 4 · Pipeline</a>
+  <a href="#phase2">6 · Phase II — Model Development</a>
+  <a href="#architecture">7 · System Architecture</a>
+  <a href="#deepdive">8 · Technical Deep Dive</a>
+  <a href="#decisions">9 · Engineering Decisions</a>
+  <a href="#tooling">10 · Tooling Built</a>
+  <a href="#results">11 · Results</a>
+  <a href="#challenges">12 · Challenges</a>
+  <a href="#limitations">13 · Known Limitations</a>
+  <a href="#lessons">14 · Lessons Learned</a>
+  <a href="#future">15 · Future Work</a>
+  <a href="#appendix">16 · Appendix</a>
+</nav>
+
+<main>
+
+<header class="cover">
+  <span class="eyebrow">AI/ML Internship · Engineering Report</span>
+  <h1>Vehicle Orientation Classification &amp; Dataset Engineering for an ANPR Pipeline</h1>
+  <p class="sub">Design and construction of a production computer-vision pipeline determining vehicle type, orientation, and registration-plate location from a single camera image.</p>
+  <div class="meta">
+    <div><dt>Author</dt><dd>Neeraj Tiwari</dd></div>
+    <div><dt>Role</dt><dd>AI/ML Intern</dd></div>
+    <div><dt>Duration</dt><dd>~30 days · ongoing</dd></div>
+    <div><dt>Hardware</dt><dd>NVIDIA A100 80GB (MIG)</dd></div>
+    <div><dt>Framework</dt><dd>PyTorch · YOLOv5</dd></div>
+    <div><dt>Status</dt><dd>Phase I complete</dd></div>
+  </div>
+</header>
+
+<h2 id="summary">Executive Summary</h2>
+<p>This report documents the design and construction of a production-grade computer vision pipeline for <strong>Automatic Number Plate Recognition (ANPR)</strong> in a parking-management context. The system determines, from a single camera image, what type of vehicle is present, which direction it is facing, and where its registration plate is located.</p>
+<p>The internship did not begin with model training. It began by establishing that the problem was tractable, then discovering — through a failed first attempt — that the binding constraint was <strong>data quality, not model architecture</strong>. That finding redirected the remainder of the work.</p>
+<p><strong>Phase I (Weeks 1–4)</strong> established the problem domain, validated feasibility using synthetic data from the CARLA simulator, identified a severe synthetic-to-real domain gap, and responded by designing an automated labelling workflow and a production-scale preprocessing pipeline handling approximately 400,000 images.</p>
+<p><strong>Phase II (ongoing)</strong> scaled that foundation into a trained detection system. The dataset grew from roughly 220,000 to 460,000 images across three acquisition batches. A registration-plate class was added, converting four separate inference problems into a single multi-class detector. Custom evaluation tooling was built after standard detection metrics proved insufficient to answer the question that actually mattered.</p>
+
+<div class="metrics">
+  <div class="metric"><div class="val">98.08%</div><div class="lbl">Precision</div></div>
+  <div class="metric"><div class="val">97.27%</div><div class="lbl">Recall</div></div>
+  <div class="metric"><div class="val">98.99%</div><div class="lbl">mAP@0.5</div></div>
+  <div class="metric"><div class="val">93.78%</div><div class="lbl">mAP@0.5:0.95</div></div>
+  <div class="metric"><div class="val">~460k</div><div class="lbl">Images</div></div>
+  <div class="metric"><div class="val">1.77M</div><div class="lbl">Parameters</div></div>
+</div>
+
+<div class="callout c-note">
+  <div class="ct">◆ Principal Engineering Finding</div>
+  <p>Across the entire internship, every meaningful improvement in model performance came from improving the <em>data</em>, not from changing the <em>architecture</em>. The model was never the bottleneck.</p>
+</div>
+
+<h2 id="company">1 · Company Background</h2>
+<p>The host organisation operates computer-vision infrastructure for automated parking and vehicle-management systems. Cameras positioned at entry and exit points capture vehicles as they pass, and an internal ANPR service extracts registration numbers from those images to drive billing, access control, and occupancy tracking.</p>
+<p>The internship contributed to the perception layer upstream of that ANPR service — specifically, the component deciding what is in an image before the plate is ever read.</p>
+
+<h2 id="problem">2 · Problem Statement</h2>
+<h3>The business problem</h3>
+<p>A parking system photographs every vehicle entering and exiting a facility. For billing and access decisions, four questions must be answered per image:</p>
+<ol>
+  <li><strong>Is there a vehicle present at all?</strong></li>
+  <li><strong>What class of vehicle is it?</strong> — two-wheelers and four-wheelers are billed differently</li>
+  <li><strong>Which direction is it facing?</strong> — front or back, determining plate position and disambiguating entry from exit</li>
+  <li><strong>Where is the registration plate?</strong> — the crop passed to OCR</li>
+</ol>
+
+<h3>The engineering problem</h3>
+<p>Answering these as four independent models means four forward passes per image, four sets of weights to maintain, and four opportunities for components to disagree. At the throughput a parking facility generates, that is both a latency cost and an operational burden.</p>
+<p>The design target became <strong>a single detector answering all four questions in one forward pass</strong>, by encoding vehicle type and orientation jointly into the class label and treating the plate as simply another detectable object.</p>
+
+<h3>Class schema evolution</h3>
+<div class="tw"><table>
+<thead><tr><th>Version</th><th>Classes</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td><strong>v1</strong> (4-class)</td><td><code>bike_front</code>, <code>bike_back</code>, <code>non_bike_front</code>, <code>non_bike_back</code></td><td>Initial vehicle type × orientation</td></tr>
+<tr><td><strong>v2</strong> (5-class)</td><td>v1 + <code>reg_plate</code></td><td>Plate detection folded into the same model</td></tr>
+<tr><td><strong>v3</strong> (7-class)</td><td><code>bike_*</code>, <code>car_*</code>, <code>other_*</code>, <code>reg_plate</code></td><td>Four-wheelers split for billing granularity</td></tr>
+</tbody></table></div>
+
+<div class="callout c-decision">
+  <div class="ct">✓ Engineering Decision — Orientation as class, not separate head</div>
+  <p>YOLO's classification head already predicts a class per box. Expressing orientation as a class multiplication (2 vehicle types × 2 orientations) costs nothing additional at inference and removes the need for a second model. The trade-off is requiring sufficient training examples in every combination — a condition the dataset scale satisfied.</p>
+</div>
+
+<h2 id="objectives">3 · Internship Objectives</h2>
+<h3>Technical</h3>
+<ul>
+  <li>Build a vehicle orientation classification model suitable for production deployment</li>
+  <li>Design a dataset pipeline operating at the scale of hundreds of thousands of images</li>
+  <li>Integrate with the existing internal ANPR service</li>
+  <li>Establish evaluation methodology reflecting real deployment requirements</li>
+</ul>
+<h3>Learning</h3>
+<ul>
+  <li>Understand end-to-end computer vision systems from camera to business logic</li>
+  <li>Gain practical experience with object detection architectures and training</li>
+  <li>Develop competence in GPU training workflows and Linux server operation</li>
+  <li>Learn to treat data quality as a first-class engineering concern</li>
+</ul>
+<h3>Business</h3>
+<ul>
+  <li>Reduce inference cost by consolidating multiple models into one</li>
+  <li>Improve upstream data quality feeding the ANPR service</li>
+  <li>Produce a repeatable pipeline so future data batches onboard without bespoke work</li>
+</ul>
+
+<h2 id="timeline">4 · Timeline Overview</h2>
+<div class="tl">
+  <div class="tl-item">
+    <div class="tl-wk">Week 1</div>
+    <div class="tl-h">Understanding the Problem</div>
+    <div class="tl-d">Domain research across CV, detection, OCR, ANPR, CUDA. CARLA synthetic proof of concept trained and tested. Severe synthetic-to-real domain gap identified — strategy pivoted to real-world data.</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-wk">Week 2</div>
+    <div class="tl-h">Real-World Data &amp; Automated Labelling</div>
+    <div class="tl-d">Public datasets surveyed, YOLOv5 annotation format standardised. Moondream vision-language model deployed via vLLM for automated vehicle detection, orientation, and type annotation.</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-wk">Week 3</div>
+    <div class="tl-h">Dataset Quality Investigation</div>
+    <div class="tl-d">Duplicates, near-duplicates, multi-vehicle ambiguity, annotation errors, and plate-less images identified. Decision taken to build a preprocessing pipeline rather than retrain.</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-wk">Week 4</div>
+    <div class="tl-h">Production Preprocessing Pipeline</div>
+    <div class="tl-d">BK-tree near-duplicate detection, SHA256 exact deduplication, ANPR validation, threading, checkpointing, thread-safe audit logging. Scaled to ~400,000 images on A100 infrastructure.</div>
+  </div>
+  <div class="tl-item ongoing">
+    <div class="tl-wk">Phase II · Ongoing</div>
+    <div class="tl-h">Model Development &amp; Scale-Up</div>
+    <div class="tl-d">Three data batches acquired (~460k images total). 4-class then 5-class detectors trained. Custom evaluation tooling built. 7-class expansion in progress.</div>
+  </div>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th>Phase</th><th>Focus</th><th>Principal Outcome</th></tr></thead>
+<tbody>
+<tr><td>Week 1</td><td>Problem understanding + feasibility</td><td>Synthetic model works; domain gap discovered</td></tr>
+<tr><td>Week 2</td><td>Real-world data + auto-labelling</td><td>Automated annotation workflow established</td></tr>
+<tr><td>Week 3</td><td>Quality investigation</td><td>Data quality identified as binding constraint</td></tr>
+<tr><td>Week 4</td><td>Preprocessing at scale</td><td>Pipeline handling ~400k images</td></tr>
+<tr><td>Phase II</td><td>Model development</td><td><strong>5-class detector at 93.78% mAP@0.5:0.95</strong></td></tr>
+</tbody></table></div>
+
+<h2 id="phase1">5 · Phase I — Weekly Progress</h2>
+
+<h3 id="w1">Week 1 — Understanding the Problem</h3>
+<h4>Objectives</h4>
+<p>Understand the business problem before writing training code: how ANPR systems function end to end, where orientation classification fits, and what the deployment environment demands.</p>
+
+<h4>Research</h4>
+<div class="tw"><table>
+<thead><tr><th>Topic</th><th>Why it mattered</th></tr></thead>
+<tbody>
+<tr><td>Computer Vision fundamentals</td><td>Baseline for everything downstream</td></tr>
+<tr><td>CNNs</td><td>Architecture underlying all detection models used</td></tr>
+<tr><td>Object Detection</td><td>Distinguishing classification from localisation</td></tr>
+<tr><td>YOLO</td><td>Selected detection architecture</td></tr>
+<tr><td>OCR</td><td>Downstream consumer of plate crops</td></tr>
+<tr><td>ANPR</td><td>The system this pipeline feeds</td></tr>
+<tr><td>CUDA / NVIDIA GPUs</td><td>Training and inference hardware</td></tr>
+<tr><td>PyTorch</td><td>Training framework</td></tr>
+<tr><td>FastAPI / HTTP APIs</td><td>Interface to the internal ANPR service</td></tr>
+<tr><td>Linux</td><td>Deployment and operational environment</td></tr>
+<tr><td>vLLM</td><td>Serving infrastructure for the labelling model</td></tr>
+<tr><td>Moondream</td><td>Vision-language model for automated annotation</td></tr>
+</tbody></table></div>
+
+<h4>Implementation — synthetic proof of concept</h4>
+<p>To test feasibility quickly without waiting on real-world data collection, a first model was trained on synthetic imagery generated from the <strong>CARLA driving simulator</strong>.</p>
+<div class="mermaid">
+flowchart LR
+    A[CARLA Simulator] --> B[Synthetic Images]
+    B --> C[Convert to YOLO Format]
+    C --> D[Train YOLO Model]
+    D --> E[Inference]
+    E --> F{Test on Real Images}
+    F -->|Poor performance| G[Domain Gap Identified]
+</div>
+
+<h4>Results</h4>
+<p>The model learned front/back classification <strong>successfully on synthetic images</strong>. Tested on real-world photographs, performance degraded severely.</p>
+
+<div class="callout c-challenge">
+  <div class="ct">▲ Challenge — Synthetic-to-real domain gap</div>
+  <p><strong>Observed:</strong> A model with strong synthetic validation accuracy failed on real camera output.</p>
+  <p><strong>Cause:</strong> Systematic distribution differences between rendered and photographed imagery — lighting models, camera viewpoints and intrinsics, vehicle textures and materials, background complexity, weather, and sensor noise.</p>
+  <p><strong>Resolution:</strong> Rather than investing in narrowing the gap through domain adaptation or more elaborate rendering, the strategy shifted entirely toward building a high-quality real-world dataset.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Key Learnings</div>
+  <ul style="margin-bottom:0">
+    <li>Synthetic data is valuable for <em>rapid feasibility testing</em> but carries no guarantee of transfer</li>
+    <li>A model performing well on validation data drawn from its own training distribution proves far less than it appears to</li>
+    <li>Abandoning rather than repairing the synthetic approach saved substantial time — recognising a dead end early is itself an engineering result</li>
+  </ul>
+</div>
+
+<h3 id="w2">Week 2 — Real-World Data Collection &amp; Automated Labelling</h3>
+<h4>Objectives</h4>
+<p>Acquire real-world vehicle imagery, establish a canonical annotation format, and find a way to label at scale without manual annotation.</p>
+
+<h4>Implementation</h4>
+<p>Multiple publicly available datasets were surveyed and evaluated. <strong>YOLOv5 annotation format</strong> was selected as the common target — the format consumed directly by the training framework, avoiding a conversion step in the training loop.</p>
+<p>Manual annotation was ruled out quickly; at the scale required it was not viable on any realistic timeline. <strong>Moondream</strong>, a vision-language model served via vLLM, was evaluated as an automated annotator.</p>
+
+<div class="mermaid">
+flowchart TD
+    A[Raw Images] --> B[Moondream VLM]
+    B --> C[Vehicle Detection]
+    B --> D[Orientation Classification]
+    B --> E[Type Classification]
+    C --> F[YOLO Annotation Export]
+    D --> F
+    E --> F
+    F --> G[Labelled Dataset]
+</div>
+
+<h4>Results &amp; learnings</h4>
+<ul>
+  <li>Annotation effort reduced by orders of magnitude relative to manual labelling</li>
+  <li>Weak supervision — using models to label data for other models — is a practical necessity at scale, not a compromise</li>
+  <li>Standardising the annotation format early prevented conversion complexity later</li>
+  <li>Automated labels inherit the biases of the labelling model, a constraint that shaped all subsequent evaluation work</li>
+</ul>
+
+<h3 id="w3">Week 3 — Dataset Quality Investigation</h3>
+<h4>Investigation findings</h4>
+<div class="tw"><table>
+<thead><tr><th>Issue</th><th>Consequence if unaddressed</th></tr></thead>
+<tbody>
+<tr><td>Duplicate images</td><td>Inflated apparent dataset size; leakage between train and test</td></tr>
+<tr><td>Near-duplicate images</td><td>Same leakage risk, harder to detect</td></tr>
+<tr><td>Multiple vehicles per image</td><td>Ambiguous supervision signal</td></tr>
+<tr><td>Incorrect annotations</td><td>Model learns the annotator's errors</td></tr>
+<tr><td>Images without readable plates</td><td>Training noise for a plate-detection objective</td></tr>
+</tbody></table></div>
+
+<div class="callout c-decision">
+  <div class="ct">✓ Engineering Decision — Preprocess before retraining</div>
+  <p>The instinct after a disappointing model is to change the model. The investigation established that data defects — particularly duplication and annotation errors — would cap achievable performance regardless of architecture, model size, or hyperparameter tuning.</p>
+  <p>Resource was therefore committed to a preprocessing pipeline rather than to architecture search.</p>
+</div>
+
+<div class="mermaid">
+flowchart TD
+    A[Raw Dataset] --> B[Duplicate Removal]
+    B --> C[Near-Duplicate Removal]
+    C --> D[Vehicle Cropping]
+    D --> E[Company ANPR Validation]
+    E --> F{Plate readable?}
+    F -->|No| G[Reject / Quarantine]
+    F -->|Yes| H[Clean Dataset]
+</div>
+
+<h3 id="w4">Week 4 — Production Preprocessing Pipeline</h3>
+<h4>Module structure</h4>
+<div class="tw"><table>
+<thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>config.py</code></td><td>Central configuration — paths, thresholds, API endpoints, thread counts</td></tr>
+<tr><td><code>utils.py</code></td><td>Reusable primitives — hashing, BK-tree, ANPR client, thread-safe logging, safe file movement</td></tr>
+<tr><td><code>preprocess.py</code></td><td>Orchestration — deduplication, validation, summary reporting</td></tr>
+</tbody></table></div>
+
+<h4>Deduplication at scale</h4>
+<p>Two distinct mechanisms addressing two distinct problems. <strong>Exact duplicates</strong> — SHA256 hash of file bytes, resolved against a hash set in O(n). <strong>Near-duplicates</strong> — perceptual hashing combined with a BK-tree for Hamming-distance search.</p>
+
+<div class="callout c-note">
+  <div class="ct">◆ Engineering Note — Why a BK-tree</div>
+  <p>Naive near-duplicate detection compares every image against every other: <strong>O(n²)</strong>. At 400,000 images that is approximately <strong>80 billion comparisons</strong> — computationally infeasible.</p>
+  <p>A BK-tree exploits the fact that Hamming distance is a <em>metric</em> and therefore obeys the triangle inequality. Each tree edge is labelled with the distance between parent and child. When searching for all items within distance <code>d</code> of a query, the triangle inequality guarantees a child at edge-distance <code>k</code> can only contain matches if <code>|k − dist(query, node)| ≤ d</code>. Every child failing that test is pruned along with its entire subtree.</p>
+  <p>Lookup cost drops to approximately <strong>O(log n)</strong> in practice.</p>
+</div>
+
+<h4>Production engineering features</h4>
+<div class="tw"><table>
+<thead><tr><th>Feature</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Multi-threading</td><td>Parallelise network-bound ANPR calls</td></tr>
+<tr><td>Batch processing</td><td>Bounded memory footprint at scale</td></tr>
+<tr><td>Thread-safe CSV logging</td><td>Every decision auditable after the fact</td></tr>
+<tr><td>Checkpointing</td><td>Resume after interruption without reprocessing</td></tr>
+<tr><td>Never-delete policy</td><td>Rejected files moved, never removed — every decision reversible</td></tr>
+<tr><td>Collision-safe movement</td><td>Prevent silent overwrites on name collision</td></tr>
+<tr><td>Linux deployment</td><td>Long jobs under <code>screen</code>, surviving SSH disconnection</td></tr>
+</tbody></table></div>
+
+<div class="callout c-challenge">
+  <div class="ct">▲ Challenge — Interrupted long-running job</div>
+  <p><strong>Observed:</strong> An accidental keyboard interrupt terminated a multi-hour preprocessing run at ~75% completion. All progress lost.</p>
+  <p><strong>Resolution:</strong> Append-only checkpoint files added to every long-running stage. On restart, completed items are loaded and skipped. Failures are deliberately <em>not</em> checkpointed, so a re-run automatically retries only what failed.</p>
+  <p><strong>Wider lesson:</strong> At this scale, resumability is not a convenience feature. It is a correctness requirement.</p>
+</div>
+
+<h2 id="phase2">6 · Phase II — Model Development &amp; Scale-Up</h2>
+
+<h3>6.1 Data acquisition at scale</h3>
+<div class="tw"><table>
+<thead><tr><th>Batch</th><th>URLs</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Batch 1</td><td>~86,000</td><td>Rear-facing camera angle</td></tr>
+<tr><td>Batch 2</td><td>~202,000</td><td>Rear-facing camera angle</td></tr>
+<tr><td>Batch 3</td><td>~274,000</td><td>Mixed day/night, mixed orientation</td></tr>
+</tbody></table></div>
+<p>Total dataset growth: approximately <strong>220,000 → 460,000 images</strong>.</p>
+
+<div class="callout c-note">
+  <div class="ct">◆ Engineering Note — Cross-batch overlap verification</div>
+  <p>Before downloading each batch, URL sets were intersected in Python against all previously acquired batches. Zero overlap was confirmed prior to committing bandwidth — preventing both wasted transfer and, more importantly, duplicate contamination that would have propagated into the train/test split.</p>
+</div>
+
+<h3>6.2 Multi-stage quality filtering</h3>
+<p>Batch 3 introduced a problem earlier batches did not have: night images so dark that orientation was genuinely undecidable — only headlights and the plate visible.</p>
+
+<h4>Stage 1 — Brightness filtering</h4>
+<p>Mean brightness scored per image via a 1/8-scale grayscale read, chosen for speed and low memory footprint at scale. Distribution banded, and <strong>sample images from each band visually reviewed</strong> before selecting a cutoff.</p>
+<div class="tw"><table>
+<thead><tr><th>Brightness band</th><th>Image count</th></tr></thead>
+<tbody>
+<tr><td>000–010</td><td>97</td></tr>
+<tr><td>010–020</td><td>2,024</td></tr>
+<tr><td>020–030</td><td>10,860</td></tr>
+</tbody></table></div>
+
+<div class="callout c-decision">
+  <div class="ct">✓ Engineering Decision — Threshold selection methodology</div>
+  <p>The threshold of <strong>40</strong> was not chosen analytically. Sample images were extracted from each brightness band and inspected directly, and the cutoff placed where human classification became unreliable. Where a threshold governs what data a model learns from, looking at the data is more defensible than picking a round number.</p>
+</div>
+
+<h4>Stages 2 &amp; 3 — Vehicle presence and plate visibility</h4>
+<p>Images with no vehicle detection above both confidence and minimum-area thresholds (2% of image area) were separated. Images where the ANPR service found no plate above threshold were separated. For a pipeline whose downstream consumer is OCR, an image with no visible plate carries no usable signal. All stages <strong>moved</strong> files rather than deleting them, with per-image decisions written to CSV.</p>
+
+<h3>6.3 Adding the registration plate class</h3>
+<div class="tw"><table>
+<thead><tr><th>Outcome</th><th>Count</th><th>Share</th></tr></thead>
+<tbody>
+<tr><td>Plate box added</td><td><strong>286,456</strong></td><td>96.4%</td></tr>
+<tr><td>No confident plate</td><td>10,643</td><td>3.6%</td></tr>
+<tr><td>Size read failures</td><td>0</td><td>0%</td></tr>
+<tr><td>ANPR service failures</td><td>0</td><td>0%</td></tr>
+</tbody></table></div>
+<p>The implementation was made <strong>idempotent</strong> — existing plate-class lines stripped before new ones written — so re-running at a different confidence threshold never double-adds boxes.</p>
+
+<h3>6.4 Second-chance plate recovery</h3>
+<div class="mermaid">
+flowchart TD
+    A[10,643 images: no confident plate] --> B[Local plate model, batched GPU inference]
+    B --> C{Plate detected?}
+    C -->|Yes| D[Write merged label + visual overlay]
+    D --> E[recovered/]
+    C -->|No| F[rejected/ — plate genuinely not visible]
+</div>
+
+<div class="callout c-decision">
+  <div class="ct">✓ Engineering Decision — Second model rather than lowering the threshold</div>
+  <p>Lowering the ANPR confidence threshold would have recovered more plates <em>and</em> admitted more false positives across the entire dataset. Running a structurally different model over only the failures isolates the risk to the subset already known to be problematic, and provides genuine independent evidence rather than a weaker version of the same evidence.</p>
+</div>
+
+<h3>6.5 Dataset splitting</h3>
+<div class="callout c-challenge">
+  <div class="ct">▲ Challenge — Merge-order splitting defect</div>
+  <p><strong>Observed:</strong> The merged dataset was ordered by source — all of source A, then B, then C.</p>
+  <p><strong>Risk:</strong> Splitting on that raw order would have assigned entire sources exclusively to individual splits. The test set would then have measured <em>"can the model generalise to a camera it has never seen"</em> rather than <em>"how good is this model"</em> — producing metrics misleading in a way no error message would reveal.</p>
+  <p><strong>Resolution:</strong> Seeded shuffle applied before splitting; fixed seed preserves reproducibility.</p>
+  <p><strong>Wider lesson:</strong> The most dangerous defects are the ones that produce plausible numbers rather than crashes.</p>
+</div>
+<p>Images are <strong>symlinked</strong> into split folders rather than copied, avoiding duplication of hundreds of thousands of files. Labels are <strong>copied</strong>, being small and mutated per split by some stages.</p>
+
+<h3>6.6 Model training</h3>
+<h4>Model v1 — 4-class detector</h4>
+<div class="tw"><table>
+<thead><tr><th>Class</th><th>GT boxes</th><th>Class accuracy</th></tr></thead>
+<tbody>
+<tr><td><code>bike_back</code></td><td>1,992</td><td>100.0%</td></tr>
+<tr><td><code>non_bike_back</code></td><td>3,336</td><td>93.8%</td></tr>
+<tr><td><strong>Overall</strong></td><td><strong>5,157</strong></td><td><strong>96.12%</strong></td></tr>
+</tbody></table></div>
+
+<h4>Model v2 — 5-class detector (plate included)</h4>
+<div class="tw"><table>
+<thead><tr><th>Configuration</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Base weights</td><td>1-class <code>reg_plate</code> detector (<code>nc=1</code>)</td></tr>
+<tr><td>Target</td><td>5 classes (<code>nc=5</code>)</td></tr>
+<tr><td>Resolution</td><td>320 → <strong>640</strong></td></tr>
+<tr><td>Initial learning rate</td><td>0.01 → <strong>0.001</strong></td></tr>
+<tr><td><code>iou_t</code></td><td>0.20 → <strong>0.15</strong></td></tr>
+<tr><td>Weight transfer</td><td><strong>343 / 349 tensors</strong></td></tr>
+</tbody></table></div>
+
+<h4>Training curve characteristics</h4>
+<div class="tw"><table>
+<thead><tr><th>Epoch range</th><th>mAP@0.5:0.95</th><th>Interpretation</th></tr></thead>
+<tbody>
+<tr><td>0 → 40</td><td>0.486 → 0.894</td><td>Rapid feature adaptation</td></tr>
+<tr><td>40 → 150</td><td>0.894 → 0.930</td><td>Diminishing returns</td></tr>
+<tr><td>150 → 327</td><td>0.930 → 0.938</td><td>Localisation refinement only</td></tr>
+</tbody></table></div>
+<p>By epoch 150, precision, recall, and mAP@0.5 had all plateaued. Only mAP@0.5:0.95 continued improving — indicating the model had found essentially all detectable objects and was refining box tightness, which matters disproportionately for small objects such as plates. Validation losses tracked downward alongside training losses throughout, with no divergence across 327 epochs.</p>
+
+<h4>Model v3 — 7-class expansion (in progress)</h4>
+<div class="tw"><table>
+<thead><tr><th>Old class</th><th>New class</th><th>Method</th></tr></thead>
+<tbody>
+<tr><td>0 <code>bike_front</code></td><td>0 <code>bike_front</code></td><td>Direct remap</td></tr>
+<tr><td>1 <code>bike_back</code></td><td>1 <code>bike_back</code></td><td>Direct remap</td></tr>
+<tr><td>2 <code>non_bike_front</code></td><td>2 <code>car_front</code> or 4 <code>other_front</code></td><td>Crop → COCO classification</td></tr>
+<tr><td>3 <code>non_bike_back</code></td><td>3 <code>car_back</code> or 5 <code>other_back</code></td><td>Crop → COCO classification</td></tr>
+<tr><td>4 <code>reg_plate</code></td><td>6 <code>reg_plate</code></td><td>Direct remap</td></tr>
+</tbody></table></div>
+<p>Only the two ambiguous classes required inference. Each existing box was cropped with padding for context and classified by a COCO-pretrained detector. <strong>Box coordinates and orientation were never modified</strong> — only the class digit changed. Smoke test over 200 files: 111 <code>car</code>, 33 <code>other</code>, 1 fallback — approximately 23% of four-wheeler boxes classified as <code>other</code>, a workable balance rather than the severe imbalance anticipated.</p>
+
+<h2 id="architecture">7 · System Architecture</h2>
+
+<h3>7.1 Production inference pipeline</h3>
+<div class="mermaid">
+flowchart TD
+    A[Camera] --> B[Image Capture]
+    B --> C[Multi-Class Detector<br/>single forward pass]
+    C --> D[Vehicle Type + Orientation]
+    C --> E[Registration Plate Box]
+    E --> F[Plate Crop]
+    F --> G[OCR Engine]
+    G --> H[Registration Number]
+    D --> I[Parking Business Logic]
+    H --> I
+    I --> J[Billing / Access Control]
+</div>
+<p>The consolidation is visible here: a single detector node produces both vehicle classification and plate localisation, where an earlier design would have required separate models for vehicle detection, type classification, orientation classification, and plate detection.</p>
+
+<h3>7.2 Data engineering pipeline</h3>
+<div class="mermaid">
+flowchart TD
+    A[Transaction CSV] --> B[URL Extraction]
+    B --> C[Overlap Check vs Prior Batches]
+    C --> D[Threaded Resumable Downloader]
+    D --> E[SHA256 Exact Deduplication]
+    E --> F[pHash + BK-Tree Near-Deduplication]
+    F --> G[Brightness Filter]
+    G --> H[Vehicle Presence Filter]
+    H --> I[ANPR Plate Visibility Filter]
+    I --> J[Automated Labelling]
+    J --> K[Plate Box Augmentation]
+    K --> L{Plate found?}
+    L -->|No| M[Second-Chance Local Model]
+    M --> N[Recovered / Rejected]
+    L -->|Yes| O[Merged Dataset]
+    N --> O
+    O --> P[Seeded Shuffle]
+    P --> Q[75/10/15 Split]
+    Q --> R[Training]
+</div>
+
+<h3>7.3 Repository structure</h3>
+<pre><code>main/
+├── config.py                    # Central configuration
+├── utils.py                     # BK-tree, hashing, ANPR client, checkpoints
+├── preprocess.py                # Deduplication + validation orchestration
+│
+├── download_images.py           # Threaded resumable downloader
+├── make_yolo.py                 # Automated labelling
+├── filter_brightness.py         # Brightness analysis and filtering
+├── filter_dataset.py            # Vehicle + plate triage
+├── add_plate_labels.py          # Plate class augmentation via ANPR
+├── recover_plates_local.py      # Second-chance plate recovery
+├── split_car_other.py           # 5-class → 7-class relabelling
+├── merge_datasets.py            # Multi-source dataset merge
+├── split_dataset3.py            # Seeded 75/10/15 split
+├── add_dataset.py               # End-to-end batch orchestrator
+│
+├── eval_classification.py       # Classification accuracy + confusion matrix
+├── eval_metrics.py              # Precision/recall/AP on arbitrary folder pairs
+├── review_sample.py             # Sample review, good/bad triage
+├── find_errors.py               # Worst-prediction analysis
+├── find_plate_errors.py         # Plate-specific failure analysis
+├── infer_draw.py                # Prediction visualisation
+├── draw_labels.py               # Ground-truth visualisation
+│
+└── Dataset3_merged/
+    ├── images/
+    ├── labels/
+    └── yolo_split/
+        ├── train/{images,labels}
+        ├── val/{images,labels}
+        ├── test/{images,labels}
+        └── data.yaml</code></pre>
+
+<h2 id="deepdive">8 · Technical Deep Dive</h2>
+
+<h3>8.1 Convolutional Neural Networks</h3>
+<p>A convolution slides a small learned kernel across an image; each output value is a weighted sum over a local neighbourhood. Convolutions replace fully connected layers for three reasons:</p>
+<ol>
+  <li><strong>Parameter sharing</strong> — the same kernel applies at every position, so an edge detector is learned once rather than separately per pixel location</li>
+  <li><strong>Locality</strong> — nearby pixels are correlated; distant ones generally are not</li>
+  <li><strong>Translation equivariance</strong> — a vehicle shifted right produces the same features, shifted right</li>
+</ol>
+<p>A fully connected layer on a 640×640×3 image would require approximately 1.2M weights <em>per neuron</em> — not tractable.</p>
+<p>Networks build a <strong>feature hierarchy</strong>: early layers detect edges and colour transitions, middle layers textures and object parts, deep layers object-level concepts. This hierarchy is precisely why transfer learning works — early-layer features are close to universal across vision tasks.</p>
+
+<h3>8.2 Object detection and YOLO</h3>
+<div class="tw"><table>
+<thead><tr><th>Approach</th><th>Mechanism</th><th>Trade-off</th></tr></thead>
+<tbody>
+<tr><td>Two-stage (R-CNN family)</td><td>Propose regions, then classify each</td><td>Historically more accurate, slower</td></tr>
+<tr><td>One-stage (YOLO, SSD)</td><td>Predict boxes and classes directly from feature maps</td><td>Faster; accuracy gap largely closed</td></tr>
+</tbody></table></div>
+
+<div class="tw"><table>
+<thead><tr><th>Component</th><th>Function</th></tr></thead>
+<tbody>
+<tr><td><strong>Backbone</strong> (CSPDarknet)</td><td>Feature extraction with progressive downsampling</td></tr>
+<tr><td><strong>Neck</strong> (PANet/FPN)</td><td>Multi-scale fusion — high-resolution features for small objects, semantic features for large</td></tr>
+<tr><td><strong>Head</strong></td><td>Outputs <code>(nc + 5) × anchors</code> channels per scale</td></tr>
+</tbody></table></div>
+
+<p><strong>Anchor boxes</strong> are pre-defined box priors at each grid cell; the network predicts offsets from these priors rather than regressing coordinates from nothing — a substantially easier learning problem. YOLOv5's <strong>autoanchor</strong> runs k-means over the dataset's box dimensions at training start, which matters when targets have unusual aspect ratios, as registration plates do.</p>
+<p><strong>Non-Maximum Suppression</strong> resolves multiple overlapping detections per object: retain the highest-confidence box, suppress all boxes overlapping it above an IoU threshold, repeat.</p>
+
+<h3>8.3 Detection metrics</h3>
+<div class="tw"><table>
+<thead><tr><th>Metric</th><th>Definition</th><th>Failure mode it reveals</th></tr></thead>
+<tbody>
+<tr><td><strong>Precision</strong></td><td>TP / (TP + FP)</td><td>Low → too many false alarms</td></tr>
+<tr><td><strong>Recall</strong></td><td>TP / (TP + FN)</td><td>Low → missing real objects</td></tr>
+<tr><td><strong>IoU</strong></td><td>overlap / union</td><td>Localisation quality</td></tr>
+<tr><td><strong>AP</strong></td><td>Area under precision-recall curve</td><td>Single-class summary</td></tr>
+<tr><td><strong>mAP@0.5</strong></td><td>AP averaged over classes at IoU ≥ 0.5</td><td>Lenient — detection presence</td></tr>
+<tr><td><strong>mAP@0.5:0.95</strong></td><td>AP averaged over IoU 0.50…0.95</td><td>Strict — rewards tight boxes</td></tr>
+</tbody></table></div>
+
+<div class="callout c-note">
+  <div class="ct">◆ Engineering Note — Computing AP correctly</div>
+  <p>AP is the area under the precision-recall curve, which requires predictions across the full confidence range to trace. Custom evaluation tooling therefore runs inference at a very low confidence threshold (0.001) to obtain the complete curve, and separately reports precision/recall/F1 at the intended deployment threshold. Thresholding before computing AP truncates the curve and understates the result.</p>
+</div>
+
+<h3>8.4 Transfer learning and class-count changes</h3>
+<p>The detection head's output width is a function of class count: <code>(nc + 5) × num_anchors</code> per scale. Changing the class count therefore changes the shape of the final convolution layers. YOLOv5 handles this through <code>intersect_dicts()</code>:</p>
+<pre><code>csd = ckpt["model"].float().state_dict()
+csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)
+model.load_state_dict(csd, strict=False)
+LOGGER.info(f"Transferred {len(csd)}/{len(model.state_dict())} items")</code></pre>
+<p>Only tensors whose shapes match are retained. Mismatched head layers are dropped and randomly reinitialised; backbone and neck transfer intact. In the 1→5 class transfer, <strong>343 of 349 tensors carried over</strong> — the six that did not were the detection head.</p>
+<p>Loss gains auto-scale for class count and resolution:</p>
+<pre><code>hyp["box"] *= 3 / nl                        # scale to detection layers
+hyp["cls"] *= nc / 80 * 3 / nl              # scale to class count
+hyp["obj"] *= (imgsz / 640) ** 2 * 3 / nl   # scale to image area</code></pre>
+
+<h3>8.5 Hyperparameter configuration</h3>
+<div class="tw"><table>
+<thead><tr><th>Parameter</th><th>Value</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td><code>lr0</code></td><td>0.001</td><td>10× below scratch default — prevents destroying pretrained features early</td></tr>
+<tr><td><code>lrf</code></td><td>0.01</td><td>Final LR is 1% of initial — large steps to explore, small to settle</td></tr>
+<tr><td><code>momentum</code></td><td>0.937</td><td>Velocity accumulation; smooths noisy gradients</td></tr>
+<tr><td><code>weight_decay</code></td><td>0.0005</td><td>L2 regularisation</td></tr>
+<tr><td><code>warmup_epochs</code></td><td>3.0</td><td>Early gradients are large and noisy; ramping prevents destabilisation</td></tr>
+<tr><td><code>iou_t</code></td><td>0.15</td><td>Loosened from 0.20 — small objects struggle to exceed strict anchor-match thresholds</td></tr>
+<tr><td><code>mosaic</code></td><td>1.0</td><td>Four-image stitching; strong small-object augmentation</td></tr>
+<tr><td><code>fliplr</code></td><td>0.5</td><td>Horizontal flip — physically plausible</td></tr>
+<tr><td><code>flipud</code></td><td>0.0</td><td><strong>Disabled</strong> — vehicles are never inverted</td></tr>
+<tr><td><code>hsv_h/s/v</code></td><td>0.015 / 0.7 / 0.4</td><td>Colour jitter for day/night and cross-camera robustness</td></tr>
+</tbody></table></div>
+
+<div class="callout c-decision">
+  <div class="ct">✓ Engineering Decision — Augmentation by physical plausibility</div>
+  <p>Augmentations were chosen by physical plausibility rather than by default. Horizontal flip is valid: a vehicle facing left genuinely occurs. Vertical flip is not, and enabling it would teach the model to expect a configuration that never appears in deployment. HSV augmentation was kept aggressive because the dataset spans day and night across multiple camera installations.</p>
+</div>
+
+<h3>8.6 Mixed precision, GPU, and infrastructure</h3>
+<p><strong>AMP</strong> uses FP16 for most operations and FP32 where numerical precision matters, with loss scaling to prevent small gradients underflowing in FP16 — roughly 2× throughput and half the memory.</p>
+<p>Training ran on an <strong>NVIDIA A100 80GB</strong> partitioned via MIG, shared with the ANPR inference service and other workloads. Practical consequences: apparent training stalls were frequently contention rather than failure; batch size selection had to account for co-tenancy; <code>nvidia-smi</code> and <code>top</code> became routine diagnostic tools. Long-running jobs executed under <strong>GNU screen</strong>, surviving SSH disconnection.</p>
+
+<h3>8.7 HTTP API integration</h3>
+<div class="tw"><table>
+<thead><tr><th>Concern</th><th>Implementation</th></tr></thead>
+<tbody>
+<tr><td>Connection reuse</td><td><code>requests.Session</code> with a sized <code>HTTPAdapter</code> pool</td></tr>
+<tr><td>Retry</td><td>Bounded retries with linear backoff</td></tr>
+<tr><td>Failure isolation</td><td>Network failures never raise into the pipeline; they return a status and retry next run</td></tr>
+<tr><td>Concurrency</td><td>Thread pool sized to the connection pool — workload is network-bound, not CPU-bound</td></tr>
+</tbody></table></div>
+
+<h2 id="decisions">9 · Engineering Decisions &amp; Rationale</h2>
+
+<h4>Why start with synthetic data?</h4>
+<p>Real-world data collection has a lead time. Synthetic data from CARLA could be generated immediately, making it possible to answer <em>"is this problem learnable at all?"</em> within days rather than weeks. The answer was yes — and that finding justified subsequent investment in real data collection.</p>
+
+<h4>Why abandon the synthetic approach rather than improve it?</h4>
+<p>Closing a synthetic-to-real domain gap is an open research problem. Collecting real data is an engineering problem with a known solution. Given a fixed timeline, the engineering problem was the rational choice. The synthetic phase had already delivered its value: feasibility evidence.</p>
+
+<h4>Why YOLO?</h4>
+<p>Single-stage detection produces boxes and classes in one forward pass, directly serving the goal of consolidating four inference problems into one. YOLOv5 additionally offered mature tooling, a well-understood training pipeline, and a nano variant sized for edge deployment (1.77M parameters, 4.2 GFLOPs).</p>
+
+<h4>Why preprocess before retraining?</h4>
+<p>The Week 3 investigation established that duplicates, annotation errors, and plate-less images would cap achievable performance regardless of architecture. Training a larger model on defective data produces a larger model that has learned the defects.</p>
+
+<h4>Why remove duplicates specifically?</h4>
+<p>Duplicates cause <strong>data leakage</strong>. If the same image appears in both training and test splits, test metrics measure memorisation rather than generalisation — silently, producing numbers that look good. Deduplication had to precede splitting for this reason.</p>
+
+<h4>Why validate with the ANPR service?</h4>
+<p>The downstream consumer is OCR. An image with no readable plate cannot serve that objective regardless of how well the vehicle is detected. Using the production ANPR service as arbiter aligns training data with the deployment requirement rather than with a proxy for it.</p>
+
+<h4>Why fine-tune rather than train from scratch?</h4>
+<p>Transfer learning reuses learned low- and mid-level features, largely task-agnostic. Random initialisation discards that and requires substantially more data and epochs. With a nano model — low capacity, slower cold convergence — and a large but imperfectly labelled dataset, the warm start was clearly favourable.</p>
+
+<h4>Why increase resolution from 320 to 640?</h4>
+<p>Registration plates are small objects, often occupying a small fraction of image area. At 320×320 a plate can reduce to a handful of pixels after downsampling, below reliable detection. Doubling input resolution approximately quadruples available pixel area. The cost — roughly 4× compute and memory per image — was absorbed by halving batch size.</p>
+
+<h4>Why lower the learning rate to 0.001?</h4>
+<p>At the scratch default of 0.01, early updates are large enough to destroy pretrained features before they can be usefully adapted, effectively reducing fine-tuning to scratch training with extra steps. A 10× reduction permits gradual adjustment — the single most consequential hyperparameter change when fine-tuning.</p>
+
+<h4>Why build custom evaluation tooling?</h4>
+<p>Standard mAP conflates two distinct properties: box localisation quality and classification correctness. The operational question — <em>"given that a vehicle is present, does the model correctly identify its type and orientation?"</em> — is a classification question mAP cannot isolate.</p>
+<p>Custom tooling matches ground-truth boxes to predictions at a <strong>deliberately loose IoU threshold of 0.3</strong>, used purely to establish correspondence rather than judge quality, then compares classes and constructs a confusion matrix — producing a pure classification accuracy figure independent of box tightness.</p>
+
+<h4>Why validate against an external dataset?</h4>
+<p>The project's own test split shares label provenance with its training data — both annotated by the same weak-supervision pipeline. A systematic annotation error is therefore rewarded rather than detected. An external plate dataset (40,419 images, independently labelled) provides genuinely independent evidence, evaluated using purpose-built tooling that handles non-standard folder layouts and remaps class ids in memory without modifying the source dataset.</p>
+
+<h2 id="tooling">10 · Engineering Tooling Built</h2>
+<div class="tw"><table>
+<thead><tr><th>Script</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>config.py</code></td><td>Centralised configuration — single source of truth for paths and thresholds</td></tr>
+<tr><td><code>utils.py</code></td><td>BK-tree, hashing, ANPR client, checkpointing, thread-safe logging</td></tr>
+<tr><td><code>preprocess.py</code></td><td>Deduplication and validation orchestration with resumability</td></tr>
+<tr><td><code>download_images.py</code></td><td>Threaded, resumable, atomic bulk downloader</td></tr>
+<tr><td><code>make_yolo.py</code></td><td>Automated vehicle labelling with plate-visibility gating</td></tr>
+<tr><td><code>filter_brightness.py</code></td><td>Brightness distribution analysis + banded sampling + filtering</td></tr>
+<tr><td><code>filter_dataset.py</code></td><td>Vehicle presence and plate visibility triage</td></tr>
+<tr><td><code>add_plate_labels.py</code></td><td>Idempotent plate-class augmentation via ANPR</td></tr>
+<tr><td><code>recover_plates_local.py</code></td><td>Independent second-opinion plate recovery</td></tr>
+<tr><td><code>split_car_other.py</code></td><td>Crop-based 5→7 class refinement</td></tr>
+<tr><td><code>merge_datasets.py</code></td><td>Multi-source merge with symlinked images</td></tr>
+<tr><td><code>split_dataset3.py</code></td><td>Seeded, reproducible 75/10/15 split</td></tr>
+<tr><td><code>add_dataset.py</code></td><td>End-to-end orchestrator for future batches</td></tr>
+<tr><td><code>eval_classification.py</code></td><td>Classification accuracy + confusion matrix</td></tr>
+<tr><td><code>eval_metrics.py</code></td><td>Precision/recall/F1/AP on arbitrary folder pairs</td></tr>
+<tr><td><code>review_sample.py</code></td><td>Sample scoring with good/bad triage output</td></tr>
+<tr><td><code>find_errors.py</code></td><td>Worst-prediction ranking with visual overlays</td></tr>
+<tr><td><code>find_plate_errors.py</code></td><td>Plate-specific failure-mode breakdown</td></tr>
+<tr><td><code>infer_draw.py</code></td><td>Prediction visualisation for manual review</td></tr>
+<tr><td><code>draw_labels.py</code></td><td>Ground-truth visualisation for label verification</td></tr>
+</tbody></table></div>
+
+<div class="callout c-note">
+  <div class="ct">◆ Engineering Note — The orchestrator</div>
+  <p>After the third data batch, the acquisition sequence had stabilised: extract URLs → download → label → merge → plate-label. This was consolidated into a single orchestrator so future batches require one command rather than a manual sequence. Recognising a repeated process and automating it is where pipeline work pays back.</p>
+</div>
+
+<h2 id="results">11 · Results &amp; Evaluation</h2>
+
+<h3>11.1 Model v1 — 4-class classification accuracy</h3>
+<div class="tw"><table>
+<thead><tr><th>Class</th><th>GT boxes</th><th>Found</th><th>Correct</th><th>Class accuracy</th><th>Detection rate</th></tr></thead>
+<tbody>
+<tr><td><code>bike_back</code></td><td>1,992</td><td>1,917</td><td>1,917</td><td><strong>100.0%</strong></td><td>96.2%</td></tr>
+<tr><td><code>non_bike_back</code></td><td>3,336</td><td>3,240</td><td>3,040</td><td>93.8%</td><td>97.1%</td></tr>
+<tr><td><strong>Overall</strong></td><td><strong>5,157</strong></td><td>—</td><td><strong>4,957</strong></td><td><strong>96.12%</strong></td><td>—</td></tr>
+</tbody></table></div>
+
+<h3>11.2 Model v2 — 5-class detection metrics</h3>
+<div class="metrics">
+  <div class="metric"><div class="val">98.08%</div><div class="lbl">Precision</div></div>
+  <div class="metric"><div class="val">97.27%</div><div class="lbl">Recall</div></div>
+  <div class="metric"><div class="val">98.99%</div><div class="lbl">mAP@0.5</div></div>
+  <div class="metric"><div class="val">93.78%</div><div class="lbl">mAP@0.5:0.95</div></div>
+</div>
+<p>327 of 500 epochs completed. No overfitting observed — validation loss tracked training loss throughout.</p>
+
+<h3>11.3 Dataset class distribution (4-class baseline)</h3>
+<div class="tw"><table>
+<thead><tr><th>Class</th><th>Boxes</th><th>Share</th></tr></thead>
+<tbody>
+<tr><td><code>bike_front</code></td><td>61,571</td><td>26.8%</td></tr>
+<tr><td><code>bike_back</code></td><td>49,384</td><td>21.2%</td></tr>
+<tr><td><code>non_bike_front</code></td><td>68,516</td><td>29.7%</td></tr>
+<tr><td><code>non_bike_back</code></td><td>54,084</td><td>23.5%</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>233,555</strong></td><td>—</td></tr>
+</tbody></table></div>
+<p>Class balance is close to uniform, removing class imbalance as a confounding factor in the baseline results.</p>
+
+<h2 id="challenges">12 · Challenges &amp; Resolutions</h2>
+<div class="tw"><table>
+<thead><tr><th>Challenge</th><th>Root cause</th><th>Resolution</th></tr></thead>
+<tbody>
+<tr><td>Synthetic model failed on real images</td><td>Domain gap in lighting, texture, viewpoint, noise</td><td>Strategic pivot to real-world dataset construction</td></tr>
+<tr><td>O(n²) near-duplicate detection infeasible</td><td>400k images → ~80B comparisons</td><td>BK-tree exploiting triangle inequality → ~O(log n)</td></tr>
+<tr><td>Lost 75% of a multi-hour job</td><td>No checkpointing</td><td>Append-only checkpoints on every long-running stage</td></tr>
+<tr><td>Night images rejected en masse</td><td>Confidence threshold tuned for daylight</td><td>Lowered threshold after inspecting debug overlays</td></tr>
+<tr><td>Undecidable dark images in batch 3</td><td>Only headlights and plate visible</td><td>Brightness filter with visually-selected threshold</td></tr>
+<tr><td>Framework incompatibility loading weights</td><td>Classic YOLOv5 <code>.pt</code> incompatible with newer <code>ultralytics</code> package</td><td>Load via <code>torch.hub.load(repo, 'custom', source='local')</code></td></tr>
+<tr><td>Apparent training stall</td><td>Shared MIG partition saturated by concurrent workloads</td><td>Diagnosed with <code>nvidia-smi</code>/<code>top</code>; scheduling adjusted</td></tr>
+<tr><td>Test metrics would have been misleading</td><td>Merged dataset in source order</td><td>Seeded shuffle before splitting</td></tr>
+<tr><td>Model trained on stale labels</td><td>YOLOv5 caches labels by directory path, not content</td><td>Delete <code>labels.cache</code> whenever labels change</td></tr>
+<tr><td>numpy types not JSON-serialisable</td><td><code>float32</code> from detector output in log writes</td><td>Custom JSON default handler for <code>np.generic</code>/<code>np.ndarray</code></td></tr>
+</tbody></table></div>
+
+<div class="callout c-challenge">
+  <div class="ct">▲ Challenge — The label cache defect</div>
+  <p><strong>Observed:</strong> After relabelling from 5 to 7 classes, training visualisations still showed old class assignments.</p>
+  <p><strong>Investigation:</strong> Label files on disk verified correct (classes 0–6 present). Cache files found dated before the relabelling operation.</p>
+  <p><strong>Cause:</strong> YOLOv5 caches parsed labels in a <code>.cache</code> file keyed on directory path, not content. Modifying labels in place while retaining the directory name causes the stale cache to be silently reused.</p>
+  <p><strong>Resolution:</strong> Delete <code>labels.cache</code> adjacent to any modified label directory. Verified by confirming the training visualisation file size changed — identical file sizes across runs had indicated identical rendered content.</p>
+</div>
+
+<h2 id="limitations">13 · Known Limitations</h2>
+<p>Stated explicitly, since understanding a system's weaknesses is part of understanding the system.</p>
+<ol>
+  <li><strong>Labels are model-generated, not human-verified.</strong> Ground truth inherits the biases and failure modes of the labelling models. A portion of measured "errors" may be label noise rather than model error.</li>
+  <li><strong>Validation labels share provenance with training labels.</strong> The model can be scored as correct for reproducing a systematic annotation error. Reported metrics are likely slightly optimistic.</li>
+  <li><strong>Orientation was assigned per batch, not predicted per image.</strong> Valid where a camera only observes one side; breaks on mixed-orientation batches — encountered directly with batch 3 and not yet fully resolved.</li>
+  <li><strong>Car/other classification is two models deep.</strong> Original four-wheeler detection from one COCO pass; car/other refinement from a second pass on a crop. Errors compound.</li>
+  <li><strong>No production latency benchmark.</strong> Model size known (1.77M parameters, 4.2 GFLOPs) but end-to-end throughput on deployment hardware unmeasured.</li>
+  <li><strong>Class imbalance not explicitly handled.</strong> <code>reg_plate</code> appears in nearly every image while vehicle classes divide across categories.</li>
+</ol>
+
+<h2 id="lessons">14 · Lessons Learned</h2>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Data quality dominates model complexity</div>
+  <p>Every meaningful performance improvement across this internship came from improving the data — deduplication, quality filtering, plate validation, correct splitting. No architecture change produced a comparable gain. The model was never the bottleneck.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Synthetic data has a specific, bounded use</div>
+  <p>It answered <em>"is this learnable?"</em> quickly and cheaply. It did not answer <em>"will this work in production?"</em> Recognising which question a tool can answer prevents over-investment in it.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ The most dangerous defects produce plausible numbers</div>
+  <p>A crash is self-reporting. Duplicate leakage and merge-order splitting both produce <em>better-looking</em> metrics while silently invalidating them. This is the strongest argument for auditing data before trusting results.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Standard metrics answer standard questions</div>
+  <p>mAP is the right metric for detection benchmarks. It was not the right metric for <em>"how reliably does this identify vehicle type and orientation?"</em> Building custom tooling to answer the actual operational question produced more actionable information than any amount of mAP tuning would have.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Scale changes which approaches are viable</div>
+  <p>O(n²) is fine at a thousand images and impossible at four hundred thousand. Copying files is fine for a small dataset and wasteful for a large one. Checkpointing is optional for a one-minute job and mandatory for a six-hour one. Scale is not a multiplier on the same approach; it changes which approaches exist.</p>
+</div>
+
+<div class="callout c-lesson">
+  <div class="ct">◈ Production ML is largely engineering</div>
+  <p>Threading, resumability, idempotency, atomic writes, audit logging, safe file handling, and cache invalidation consumed more effort than model architecture — and contributed more to the outcome.</p>
+</div>
+
+<h2 id="future">15 · Future Work</h2>
+<p>The internship is ongoing. The following are identified next steps.</p>
+
+<h4>Immediate</h4>
+<ul class="checklist">
+  <li>Complete 7-class model training and evaluate per-class performance</li>
+  <li>Investigate base-weight selection for the 7-class configuration</li>
+  <li>Resolve mixed-orientation labelling for batch 3</li>
+  <li>Complete external-dataset validation on the full 40,419-image plate benchmark</li>
+</ul>
+
+<h4>Near term</h4>
+<ul class="checklist">
+  <li>Hand-label a 1,000–2,000 image gold-standard test set for unbiased metrics</li>
+  <li>Per-class metric breakdown, particularly <code>reg_plate</code> recall relative to vehicle classes</li>
+  <li>Benchmark inference latency on target deployment hardware</li>
+  <li>Evaluate INT8 quantisation and TensorRT export</li>
+</ul>
+
+<h4>Longer term</h4>
+<ul class="checklist">
+  <li>Active learning — use model uncertainty to prioritise images for human annotation</li>
+  <li>Dedicated orientation classifier for genuinely ambiguous images</li>
+  <li>End-to-end integration testing against the production ANPR service</li>
+  <li>Containerised inference service with a documented API contract</li>
+</ul>
+
+<h2 id="appendix">16 · Appendix</h2>
+
+<h3>A · Technology stack</h3>
+<p>
+<span class="pill">Python 3.10</span><span class="pill">PyTorch</span><span class="pill">YOLOv5</span>
+<span class="pill">Ultralytics</span><span class="pill">OpenCV</span><span class="pill">Pillow</span>
+<span class="pill">ImageHash</span><span class="pill">Moondream</span><span class="pill">vLLM</span>
+<span class="pill">CARLA</span><span class="pill">CUDA</span><span class="pill">NVIDIA A100 (MIG)</span>
+<span class="pill">FastAPI</span><span class="pill">REST</span><span class="pill">Requests</span>
+<span class="pill">Ubuntu Linux</span><span class="pill">GNU screen</span><span class="pill">TensorBoard</span>
+<span class="pill">Git</span><span class="pill">YOLO annotation format</span>
+</p>
+
+<h3>B · Model configuration reference</h3>
+<div class="tw"><table>
+<thead><tr><th>Parameter</th><th>Model v1</th><th>Model v2</th></tr></thead>
+<tbody>
+<tr><td>Architecture</td><td>YOLOv5-nano</td><td>YOLOv5-nano</td></tr>
+<tr><td>Classes</td><td>4</td><td>5</td></tr>
+<tr><td>Input resolution</td><td>320×320</td><td>640×640</td></tr>
+<tr><td>Batch size</td><td>256</td><td>128</td></tr>
+<tr><td>Epochs</td><td>100</td><td>500 (327 completed)</td></tr>
+<tr><td>Optimiser</td><td>SGD + momentum</td><td>SGD + momentum</td></tr>
+<tr><td>Initial LR</td><td>0.01</td><td>0.001</td></tr>
+<tr><td>Base weights</td><td>COCO-pretrained</td><td>1-class plate detector</td></tr>
+<tr><td>Parameters</td><td>1.77M</td><td>1.77M</td></tr>
+</tbody></table></div>
+
+<h3>C · Glossary</h3>
+<div class="tw"><table>
+<thead><tr><th>Term</th><th>Definition</th></tr></thead>
+<tbody>
+<tr><td><strong>ANPR</strong></td><td>Automatic Number Plate Recognition</td></tr>
+<tr><td><strong>mAP</strong></td><td>Mean Average Precision — averaged AP across classes</td></tr>
+<tr><td><strong>IoU</strong></td><td>Intersection over Union — box overlap measure</td></tr>
+<tr><td><strong>NMS</strong></td><td>Non-Maximum Suppression — duplicate detection removal</td></tr>
+<tr><td><strong>BK-tree</strong></td><td>Burkhard-Keller tree — metric-space search structure</td></tr>
+<tr><td><strong>pHash</strong></td><td>Perceptual hash — content-based image fingerprint</td></tr>
+<tr><td><strong>AMP</strong></td><td>Automatic Mixed Precision — FP16/FP32 hybrid training</td></tr>
+<tr><td><strong>MIG</strong></td><td>Multi-Instance GPU — NVIDIA GPU partitioning</td></tr>
+<tr><td><strong>Weak supervision</strong></td><td>Using model-generated labels in place of human annotation</td></tr>
+<tr><td><strong>Domain gap</strong></td><td>Distribution shift between training and deployment data</td></tr>
+</tbody></table></div>
+
+<div class="footer">
+  Report prepared as internal engineering documentation. Results reflect measurements taken during the internship period. Phase II work is ongoing.
+</div>
+
+</main>
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad:true,
+  theme:'base',
+  themeVariables:{
+    primaryColor:'#eef2ff', primaryTextColor:'#0f172a', primaryBorderColor:'#4f46e5',
+    lineColor:'#94a3b8', secondaryColor:'#f1f5f9', tertiaryColor:'#f8fafc',
+    fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif', fontSize:'14px'
+  },
+  flowchart:{curve:'basis', padding:16}
+});
+
+var secs=[].slice.call(document.querySelectorAll('h2[id],h3[id]'));
+var links=[].slice.call(document.querySelectorAll('nav.toc a'));
+var obs=new IntersectionObserver(function(es){
+  es.forEach(function(e){
+    if(e.isIntersecting){
+      links.forEach(function(l){l.style.background='';l.style.color='';});
+      var a=links.filter(function(l){return l.getAttribute('href')==='#'+e.target.id;})[0];
+      if(a){a.style.background='var(--accent-soft)'; a.style.color='var(--accent)';}
+    }
+  });
+},{rootMargin:'-10% 0px -80% 0px'});
+secs.forEach(function(s){obs.observe(s);});
+</script>
+</body>
+</html>
