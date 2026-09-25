@@ -1,11 +1,9 @@
 # ANPR Project — Code & Reports
 
-Vehicle orientation classification and dataset engineering for an ANPR pipeline.
+Vehicle orientation classification and dataset engineering for an ANPR (automatic number plate recognition) pipeline.
 All scripts written during the internship, organised by pipeline stage.
 
-**Server location:** `/mnt/datadisk/avani/front_back/main/`
-**Virtualenv:** `source /mnt/datadisk/avani/.venv/bin/activate`
-**YOLOv5 repo:** `/mnt/datadisk/avani/yolov5`
+The pipeline covers the full lifecycle: bulk data collection, deduplication, automated labelling, quality filtering, iterative YOLOv5 training, and error analysis, producing deployment-ready weights for an existing ANPR service.
 
 ---
 
@@ -65,8 +63,17 @@ All scripts written during the internship, organised by pipeline stage.
 | File | Purpose |
 |---|---|
 | `report.md` / `.html` / `.docx` / `.pdf` | Internship engineering report, four formats |
-| `ANPR_Project_Interview_Guide.md` | Project + deep learning interview prep |
 | `build_docx.js` | Regenerates `report.docx` (needs `npm install docx`) |
+
+---
+
+## Setup
+
+```bash
+git clone https://github.com/ultralytics/yolov5
+pip install -r yolov5/requirements.txt
+export ANPR_API_URL="http://<your-anpr-host>:<port>/upload"   # used by config.py
+```
 
 ---
 
@@ -87,7 +94,7 @@ python add_plate_labels.py --images <merged>/images --labels <merged>/labels --w
 python split_dataset3.py --base <merged>
 
 # 5. Train (fine-tune from existing weights)
-cd /mnt/datadisk/avani/yolov5
+cd yolov5
 python train.py --weights <base.pt> --data <merged>/yolo_split/data.yaml \
   --hyp hyp.yaml --img 320 --batch-size 256 --epochs 300 \
   --device 0 --patience 50 --project <out> --name <run>
@@ -117,19 +124,3 @@ python train.py --weights <base.pt> --data <merged>/yolo_split/data.yaml \
 - **Class-count changes.** Going from `nc=N` to `nc=M` reinitialises the detection head automatically — watch the `Transferred X/Y items` line to confirm the backbone carried over.
 - **`--batch-size`**, not `--batch`, in `train.py`.
 - **Line continuations.** Multi-line commands with trailing `\` get mangled on paste; use single-line `&&` chains.
-
----
-
-## Note on file versions
-
-These are the copies from the Cowork session. A few have drifted from the server:
-
-- `infer_draw.py` — this copy has `--batch`; the server copy may not
-- `split_dataset3.py` — this copy resolves `--base` to an absolute path (fixes the relative-path `data.yaml` bug)
-- `review_sample.py` — this copy has `--gt-class-map`, matching the patch applied on the server
-
-Push to the server with:
-
-```bash
-scp -r ~/Desktop/ANPR_Project/*/*.py root@e2e-102-18.ssdcloudindia.net:/mnt/datadisk/avani/front_back/main/
-```
